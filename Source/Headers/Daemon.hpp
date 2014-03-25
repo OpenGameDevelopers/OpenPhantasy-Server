@@ -13,11 +13,16 @@ namespace OPS
 
 		int Execute( );
 
+		bool AlreadyRunning( );
+
 	private:
 		Daemon( const Daemon & );
 		Daemon &operator=( const Daemon & );
 
+		int LockFile( int p_FileDescriptor );
+
 		char *m_pLogPrefix;
+		char *m_pLockFileName;
 	};
 }
 

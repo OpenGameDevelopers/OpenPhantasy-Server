@@ -7,12 +7,16 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 
 namespace OPS
 {
-	Daemon::Daemon( )
+	Daemon::Daemon( ) :
+		m_pLogPrefix( nullptr ),
+		m_pLockFileName( nullptr )
 	{
 	}
 
@@ -23,6 +27,12 @@ namespace OPS
 			delete [ ] m_pLogPrefix;
 			m_pLogPrefix = nullptr;
 		}
+
+		if( m_pLockFileName )
+		{
+			delete [ ] m_pLockFileName;
+			m_pLockFileName = nullptr;
+		}
 	}
 
 	int Daemon::Initialise( const char *p_pLogPrefix )
@@ -31,6 +41,17 @@ namespace OPS
 		m_pLogPrefix = new char[ PrefixLength ];
 		strncpy( m_pLogPrefix, p_pLogPrefix, PrefixLength - 1 );
 		m_pLogPrefix[ PrefixLength ] = '\0';
+
+		char LockFileName[ 256 ];
+		memset( LockFileName, '\0', 256 );
+
+		strcat( LockFileName, "/var/run/" );
+		strcat( LockFileName, p_pLogPrefix );
+		strcat( LockFileName, ".pid" );
+
+		m_pLockFileName = new char[ strlen( LockFileName ) + 1 ];
+		strncpy( m_pLockFileName, LockFileName, strlen( LockFileName ) );
+		m_pLockFileName[ strlen( LockFileName ) ] = '\0';
 		
 		umask( 0 );
 
@@ -109,6 +130,7 @@ namespace OPS
 		}
 
 		syslog( LOG_INFO, "Server initialised" );
+		syslog( LOG_INFO, "PID file: %s", m_pLockFileName );
 
 		return 0;
 	}
@@ -120,6 +142,55 @@ namespace OPS
 		syslog( LOG_INFO, "Server exiting..." );
 
 		return 0;
+	}
+
+	bool Daemon::AlreadyRunning( )
+	{
+		int LockDescriptor;
+		char PID[ 16 ];
+		
+		LockDescriptor = open( m_pLockFileName, O_RDWR | O_CREAT,
+			S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
+
+		if( LockDescriptor < 0 )
+		{
+			syslog( LOG_ERR, "Can't open %s: %s", m_pLockFileName,
+				strerror( errno ) );
+			exit( 1 );
+		}
+
+		if( this->LockFile( LockDescriptor ) < 0 )
+		{
+			if( errno == EACCES || errno == EAGAIN )
+			{
+				close( LockDescriptor );
+				return true;
+			}
+
+			// Something went catastrophically wrong, bail!
+			syslog( LOG_ERR, "Can't lock %s: %s", m_pLockFileName,
+				strerror( errno ) );
+
+			exit( 1 );
+		}
+
+		ftruncate( LockDescriptor, 0 );
+		sprintf( PID, "%ld", ( long )getpid( ) );
+		write( LockDescriptor, PID, strlen( PID ) + 1 );
+
+		return false;
+	}
+
+	int Daemon::LockFile( int p_FileDescriptor )
+	{
+		struct flock File;
+
+		File.l_type = F_WRLCK;
+		File.l_start = 0;
+		File.l_whence = SEEK_SET;
+		File.l_len = 0;
+
+		return ( fcntl( p_FileDescriptor, F_SETLK, &File ) );
 	}
 }
 

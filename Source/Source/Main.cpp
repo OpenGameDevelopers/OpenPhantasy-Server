@@ -9,6 +9,11 @@ int main( int p_Argc, char **p_ppArgv )
 		return 1;
 	}
 
+	if( Server.AlreadyRunning( ) )
+	{
+		return 1;
+	}
+
 	return Server.Execute( );
 }
 
