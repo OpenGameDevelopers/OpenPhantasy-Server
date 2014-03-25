@@ -1,5 +1,5 @@
 ###############################################################################
-#                          Open|Phantasy Server Makefile [Linux x86] Ver. 1.0 #
+#                        Open|Phantasy [Server] Makefile [Linux x86] Ver. 1.0 #
 ###############################################################################
 ifndef TOPDIR
 export TOPDIR		:= $(shell cd ../ && pwd)
@@ -9,9 +9,9 @@ export OBJSDIR		= $(TOPDIR)/Obj/$(PLATFORM)/$(ARCH)/$(BITSIZE)/GCC/$(GCCVER)/$(B
 endif
 SOURCEDIR	= Source
 
-PROJECT := OpenPhantasyServer
+PROJECT := openphantasyd
 TARGET := $(PROJECT)
-OUTFILE	=	$(TARGETDIR)/$(TARGET)_$(GCCVER)
+OUTFILE	=	$(TARGETDIR)/$(TARGET)
 
 PLATFORM		:= Linux
 BUILD_PLATFORM	:= LINUX
